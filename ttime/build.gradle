@@ -1,0 +1,163 @@
+apply plugin: 'groovy'
+apply plugin: 'java'
+apply plugin: 'com.novoda.bintray-release'
+apply plugin: 'maven'
+
+dependencies {
+    implementation gradleApi()
+    implementation localGroovy()
+}
+
+sourceCompatibility = "8"
+targetCompatibility = "8"
+
+ext {
+    ARTIFACT_ID = 'ttime'
+    VERSION_NAME = '0.1.0'
+    VERSION_CODE = 1
+
+    DESCRIPTION = 'Counting the build time for each task in building'
+
+    SITE_URL = 'https://github.com/ljf1239848066/TaskTime'
+    GIT_URL = 'https://github.com/ljf1239848066/TaskTime.git'
+    GROUP_NAME = 'lxzh'
+    GROUP_ID = 'com.lxzh123'
+    COMPILE_SDK = 29
+    BUILD_TOOLS = '29.0.2'
+
+    MODULE_NAME = 'ttime'
+    MODULE_TYPE = 'jar'
+
+    LICENSE = ['Apache-2.0']
+
+    DEVELOPER_ID = 'lxzh'
+    DEVELOPER_NAME = 'lxzh'
+    DEVELOPER_EMAIL = 'leijf1239848066@gmail.com'
+
+    MAVEN_TYPE_SNAPSHOT = false
+
+    IS_UPLOADING = project.getGradle().startParameter.taskNames.any{it.contains('bintrayUpload')}
+}
+
+jar {
+//    //项目名，也是生成的jar的名字
+//    baseName = ARTIFACT_ID
+//    //项目版本号，这部分内容会写进manifest
+//    version = VERSION_NAME
+
+    sourceSets {
+        main {
+            java.srcDirs = ['src/main/java', 'src/main/groovy']
+        }
+    }
+
+    //项目的manifest定义，其中就包含最关键的入口类定义
+    manifest { attributes 'Main-Class': 'com.lxzh123.ttime.Main' }
+
+    tasks.withType(JavaCompile) {
+        options.compilerArgs << "-Xlint:unchecked"
+    }
+}
+
+task runMain (dependsOn: 'classes', type: JavaExec) {
+    main = 'com.lxzh123.ttime.Main'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    from project.file('src/main/groovy/com/lxzh123/ttime/Main.groovy')
+//    from sourceSets.main.allSource
+    classifier = 'sources'
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+publish {
+    artifactId = ARTIFACT_ID
+    userOrg = GROUP_NAME
+    groupId = GROUP_ID
+    uploadName = ARTIFACT_ID
+    publishVersion = VERSION_NAME
+    desc = DESCRIPTION
+    website = SITE_URL
+    licences = LICENSE
+}
+
+group = ext.GROUP_ID                //sdk分组名称，作为maven仓库查找组件时的路径约束
+version = ext.VERSION_NAME          //指定版本
+
+// 指定上传的路径
+def localMavenRepo = 'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath
+
+// 上传Task，Gradle会生成并上传pom.xml文件。
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: localMavenRepo)
+//            repository(url: uri('../repo')) //deploy到本地仓库
+            //构造项目的Pom文件
+            pom.project {
+                name = ARTIFACT_ID              //sdk标识artifactId，可以用project.name或者其他名称
+                packaging = MODULE_TYPE         //sdk类型(jar/aar)
+                description = DESCRIPTION
+            }
+        }
+    }
+}
+
+subprojects {
+    group = GROUP_NAME
+    version = VERSION
+
+    if (IS_UPLOADING && project.name in [MODULE_NAME]) {
+        println project.name
+        apply plugin: 'maven'
+
+        gradle.taskGraph.whenReady { taskGraph ->
+            taskGraph.getAllTasks().find {
+                it.path == ":$project.name:generatePomFileForMavenPublication"
+            }.doLast {
+                file("build/publications/maven/pom-default.xml").delete()
+                println 'Overriding pom-file to make sure we can sync to maven central!'
+                pom {
+                    //noinspection GroovyAssignabilityCheck
+                    project {
+                        name "$project.name"
+                        artifactId ARTIFACT_ID
+                        packaging MODULE_TYPE
+                        description DESCRIPTION
+                        url SITE_URL
+                        version VERSION_NAME
+
+                        scm {
+                            url GIT_URL
+                            connection GIT_URL
+                            developerConnection GIT_URL
+                        }
+
+                        licenses {
+                            license {
+                                name LICENSE
+                            }
+                        }
+
+                        developers {
+                            developer {
+                                id DEVELOPER_ID
+                                name DEVELOPER_NAME
+                                email DEVELOPER_EMAIL
+                            }
+                        }
+                    }
+                }.writeTo("build/publications/maven/pom-default.xml")
+            }
+        }
+    }
+}

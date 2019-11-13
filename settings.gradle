@@ -1,0 +1,2 @@
+include ':app', ':ttime'
+rootProject.name='TaskTime'
