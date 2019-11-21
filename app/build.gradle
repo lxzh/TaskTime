@@ -1,5 +1,5 @@
 apply plugin: 'com.android.application'
-//apply plugin: 'ttime'
+apply plugin: 'ttime'
 
 android {
     compileSdkVersion 29
