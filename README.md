@@ -8,6 +8,20 @@ TaskTime(ttime) is a simple gradle plugin that counts the build time for each gr
 
 And then you can find out what's taking time.
 
+## Principle
+
+This process mainly uses two key interfaces of gradle and one method:
+
+- `org.gradle.api.execution.TaskExecutionListener`
+
+This interface defines the callbacks before and after the execution of each task: `beforeExecute()` and `afterExecute() `
+
+- `org.gradle.BuildListener`
+
+This interface mainly defines callbacks for build start and build finish (and of course some other callbacks: call-start configured, all projects loaded, etc.): `buildStarted()` and `buildFinished()`
+
+- `addListener()` method for gradle object in `org.gradle.api.project`
+
 ## Integration
 
 ### 1. Adding to project
